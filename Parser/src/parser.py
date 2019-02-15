@@ -2,24 +2,29 @@ from lexer import lexer,tokens
 import yacc
 import sys,getopt
 
+i=0
+
 def p_start(p):
     '''start : block
              | statements'''
     p[0]=p[1]
-    print(p[0])
 
 def p_block(p):
     '''block : LEFTBRACE statements RIGHTBRACE
              | LEFTBRACE RIGHTBRACE'''
-    p[0]=p.slice
+    if(len(p)==3):
+      p[0]=('block','{','}')
+    else:
+      p[0]=('block','{',p[2],'}')
 
 def p_statements(p):
     '''statements : statement statements
                   | statement'''
     if (len(p) == 3):
-      p[0] = (p[1],p[2])
+      p[0] = ('statements',p[1],p[2])
+      file1.write('statements -> "'+ p[1][0] + '";' +'statements -> "'+ p[2][0] + '";' )
     else:
-      p[0] = p[1]
+      p[0] = (p[1])
 
 def p_statement_semicolon(p):
     '''statement : assignment SEMICOLON 
@@ -35,14 +40,19 @@ def p_statement_semicolon(p):
                  | whileloop
                  | forloop
                  | funcdecl'''
+    global i
     if (len(p) == 8):
-      p[0] = ('console.log()',p[4],';')
+      p[0] = (str(i),"console.log()",p[5],';')
+      file1.write(str(i)+'[label = "console.log"];'+str(i)+' -> '+ p[5][0] + ';')
+      i=i+1
     elif (len(p) == 4):
-      p[0] = ('return',p[2],';')
+      p[0] = (str(i),'return',p[2],';')
+      file1.write(str(i)+'[label = "return"];'+str(i)+' -> '+ p[2][0] + ';')
+      i=i+1
     elif (len(p) == 3):
-      p[0] = (p[1],';')
+      p[0] = (str(i),p[1],';')
     else:
-      p[0] = p[1]
+      p[0] = (str(i),p[1])
 
 
 def p_assignment(p):
@@ -75,6 +85,7 @@ def p_reassignment(p):
                     | ID MODEQ expression
                     | arraydecl
                     | LEFTPAREN reassignment RIGHTPAREN'''
+    global i
     if(len(p) == 4 and p[1] == '('):
       p[0] = ('()',p[2])
     elif(len(p) == 3):
@@ -83,7 +94,10 @@ def p_reassignment(p):
     elif(len(p) == 2):
       p[0] = p[1]
     else:
-      p[0] = (p[2],p[1],p[3])
+      p[0] = (str(i),p[2],p[1],p[3])
+      file1.write(str(i)+'[label = "'+p[2]+'"];\n'+str(i)+' -> '+ p[1] + ';\n')
+      file1.write(str(i)+'[label = "'+p[2]+'"];\n'+str(i)+' -> '+ p[3][0] + ';\n')
+      i=i+1
 
 def p_arraydecl(p):
     '''arraydecl : ID EQ LEFTBRACKET arrayList RIGHTBRACKET'''
@@ -122,6 +136,12 @@ def p_expression_op(p):
                   | expression DIVIDE expression
                   | expression MOD expression
                   | expression EXPONENT expression'''
+    global i
+    p[0]=(str(i),p[2],p[1],p[3])
+    file1.write(str(i)+'[label = "'+p[2]+'"];\n'+str(i)+' -> '+ p[1][0] + ';\n')
+    file1.write(str(i)+'[label = "'+p[2]+'"];\n'+str(i)+' -> '+ p[3][0] + ';\n')
+    i=i+1
+
 
 def p_groupExp(p):
     '''expression : LEFTPAREN expression RIGHTPAREN
@@ -156,6 +176,10 @@ def p_expression(p):
                   | functioncall
                   | arrayCall
                   | TYPEOF expression'''
+    if (len(p) == 2):
+      p[0] = p[1]
+    else:
+      p[0] = ('typeof',p[2])
 
 def p_arrayCall(p):
     '''arrayCall : ID LEFTBRACKET expression RIGHTBRACKET'''
@@ -165,6 +189,10 @@ def p_basicTypes(p):
                   | STRING
                   | ID
                   | UNDEFINED'''
+    global i
+    p[0] = (str(i),p[1])
+    file1.write(str(i)+'[label = "'+str(p[1])+'"];')
+    i=i+1
 
 def p_functioncall(p):
     '''functioncall : ID LEFTPAREN argList RIGHTPAREN'''
@@ -221,8 +249,13 @@ def p_error_semicolon(p):
 def p_error(p):
     print("Input Error")
     return
+    
+
+file1=open(sys.argv[1],'w')
+file1.write("digraph ast{\n")
 
 parser = yacc.yacc()
-t=parser.parse("(i++);",lexer)
-
+t=parser.parse("x=1*4;",lexer)
+  
+file1.write("}")
 print(t)
