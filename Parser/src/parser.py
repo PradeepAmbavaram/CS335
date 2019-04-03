@@ -24,7 +24,7 @@ def p_statements(p):
       p[0] = ('statements',p[1],p[2])
       file1.write('statements -> "'+ p[1][0] + '";' +'statements -> "'+ p[2][0] + '";' )
     else:
-      p[0] = (p[1])
+      p[0] = (p[1][0])
 
 def p_statement_semicolon(p):
     '''statement : assignment SEMICOLON 
