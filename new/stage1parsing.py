@@ -931,7 +931,7 @@ def p_error(p):
 	print("YOU GOT A BUG IN YOUR INPUT, PLEASE CHECK")
 	return
 
-#parser = yacc.yacc()
+parser = yacc.yacc()
 toks = []
 
 
@@ -957,6 +957,6 @@ if __name__ == '__main__':
 	b=["vkjkt",'b','cswdw',"cfdjvbd"]
 	c=newdict(b)
 	print(c)
-	#filename = sys.argv[1]
-	#data = read_data(filename)
-	#result = parser.parse(data, lexer=lexer_global)
+	filename = sys.argv[1]
+	data = read_data(filename)
+	result = parser.parse(data, lexer=lexer_global)
