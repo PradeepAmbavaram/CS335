@@ -125,10 +125,6 @@ precedence = (
         ('right', 'NOT', 'BINNOT'),
         )
 
-def p_expression_gen(p):
-    '''expression : EVAL LEFTPAREN statements RIGHTPAREN
-                  | EVAL LEFTPAREN block RIGHTPAREN'''
-
 def p_expression_op(p):
     '''expression : expression PLUS expression
                   | expression MINUS expression

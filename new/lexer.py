@@ -2,7 +2,7 @@
 import sys
 import lex
 
-keywords = ('FOR', 'FUNCTION','BREAK', 'CASE', 'SWITCH', 'UNDEFINED', 'THIS', 'CONTINUE', 'IF', 'TYPEOF','EVAL', 'VAR', 'DELETE', 'WHILE', 'DO', 'NEW', 'WITH', 'ELSE', 'RETURN', 'CONSOLE', 'LOG', 'BOOLEAN');
+keywords = ('FOR', 'FUNCTION','BREAK', 'CASE', 'SWITCH', 'UNDEFINED', 'THIS', 'CONTINUE', 'IF', 'TYPEOF', 'VAR', 'DELETE', 'WHILE', 'DO', 'NEW', 'WITH', 'ELSE', 'RETURN', 'CONSOLE', 'LOG', 'BOOLEAN');
 
 tokens = (
 	 'PLUS', 'MINUS', 'INTO', 'EXPONENT', 'DIVIDE', 'NUMBER', 'DOT', 'COMMA', 'SEMICOLON', 'COLON','MOD', 'BINAND', 'BINOR', 'BINXOR', 'BINNOT', 'CONDOP', 'NOT', 'LEFTPAREN', 'RIGHTPAREN', 'LEFTBRACE', 'RIGHTBRACE', 'LEFTBRACKET', 'RIGHTBRACKET', 'EQ', 'DOUBLEEQ', 'NOTEQUAL', 'STREQUAL', 'STRNEQUAL', 'LT', 'GT', 'LTE', 'GTE', 'OR', 'AND', 'INCR', 'DECR',  'PLUSEQ', 'MINUSEQ', 'INTOEQ', 'DIVEQ',  'LSHIFTEQ', 'RSHIFTEQ', 'URSHIFTEQ', 'ANDEQ', 'MODEQ', 'XOREQ', 'OREQ', 'ID', 'STRING', 'LCOMMENT', 'BCOMMENT', 'GETPROP', 'SETPROP','LSHIFT', 'RSHIFT', 'URSHIFT', 'REGEX', 'GETP', 'SETP'
@@ -81,7 +81,7 @@ number = r""" 						# over
 """
 @lex.TOKEN(number)
 def t_NUMBER(t):
-	t.value = int(t.value)
+	t.value = t.value
 	return t
 
 identifier = r'[a-zA-Z_][a-zA-Z_0-9]*'
@@ -143,9 +143,6 @@ setp = r'set' + r'(?=\s' + identifier + r')'
 @lex.TOKEN(setp)
 def t_SETP(token):
 	return token
-
-
-
 	
 t_LCOMMENT = r'//[^\r\n]*'
 t_BCOMMENT = r'\/\*[^*]*\*\/'
@@ -164,7 +161,7 @@ def t_error(t):
 	# print("Illegal character '%s'" % t.value[0])
 	t.lexer.skip(1)
 
-def lexfunc(data, toks):	
+def lexFunc(data, toks):	
 	lexer = lex.lex()
 	lexer.input(data)
 	# Tokenize
@@ -175,3 +172,4 @@ def lexfunc(data, toks):
 			break
 		toks.append(tok)
 		 
+lexer = lex.lex()

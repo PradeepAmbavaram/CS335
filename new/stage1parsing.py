@@ -1,8 +1,8 @@
 import yacc
+from lexer import lexFunc,lexer,tokens
 import sys
 import os
 import pprint
-from lexer import tokens, lexer_global, lex_fun
 #output = []
 
 temp_count=0
@@ -31,6 +31,8 @@ var['s']=0
 var['p']= 'zerotemp'
 var['d']= 2019
 
+offset = 0
+
 def newvarforscope(type,level,place,data):
 	var = {}
 	var['t']=type
@@ -47,7 +49,7 @@ def createtemp(var,scope,type,data):
 	scope[var]=newvarforscope(type,scope['level'],new,data)
 	scope['vars'].append(var)
 	#Address Descriptor
-	st['address'][new]={'scope':scope,'variable':varname}
+	st['address'][new]={'scope':scope,'variable':var}
 	return new
 
 def newtemp():
@@ -65,10 +67,9 @@ def newdict(l):
 	while i <= size/2:
 		new[l[i]]=l[i+1]
 		i=i+2
-		print(i)
 	return new
 
-def id_present():
+def id_present(id,type):
 	scopes =st['scopes']
 	flag = False
 	count = 0
@@ -89,20 +90,21 @@ def createlabel():
 	label = label_base + str(labels)
 	labels += 1
 	if labels > 120:
-		print "infinite loop some error"	
+		print "ERROR:Infinite loop"	
 		sys.exit()
 	return label
 
 
 
 def addscope():
-	new = str(num_scopes)
+	global num_scopes
 	num_scopes +=1
+	new = str(num_scopes)
 	st[new]={}
 	st[new]['level']=len(st['scopes'])
 	st[new]['vars']=[]
 	st[new]['funs']=[]
-	st['scopes'].append(new)
+	st['scopes'].append(st[new])
 
 def removescope():
 	st['scopes'].pop()
@@ -113,7 +115,7 @@ def createfun(iden):
 	function_count += 1
 
 	this= st['scopes'][len(st['scopes'])-1]
-	this[iden] = newvarforscope('FUNCTION',this['level'],new,NULL)
+	this[iden] = newvarforscope('FUNCTION',this['level'],new,data={})
 	this['funs'].append(iden)
 	return new
 
@@ -121,7 +123,7 @@ def loop_and_print(o,name):
 	global offset
 	elements = o['elements']
 	for temp in range(elements):
-		processing_obj=o['array'][temp_count]
+		processing_obj=o['array'][temp]
 		if processing_obj['elements']>1:
 			loop_and_print(processing_obj,name)
 		else:
@@ -132,7 +134,7 @@ def loop_and_print(o,name):
 def getshape(o,arr):
 	elements = o['elements']
 	arr.append(elements)
-	processing_obj = obj['array'][0]
+	processing_obj = o['array'][0]
 	if processing_obj['elements']>1:
 		arr = getshape(processing_obj,arr)
 	else:
@@ -146,7 +148,8 @@ def getshape(o,arr):
 
 
 def p_start(p):
-	'''start : block  | statements'''
+	'''start : block  
+			 | statements'''
 
 
 def p_block(p):
@@ -160,7 +163,8 @@ def p_blockmarker(p):
 
 
 def p_statements(p):
-	'''statements : statement statements | statement'''
+	'''statements : statement statements 
+				  | statement'''
 
 
 
@@ -178,37 +182,27 @@ def p_statement_semicolon(p):
  				 | forloop
  				 | reassignmentarray SEMICOLON'''
 
-
-
 def p_return_expression(p):
 	'''statement : RETURN expression SEMICOLON'''
 	print "push, "+p[2]['place']
 	print "ret"
 	
-
-
 def p_statement_print(p):
 	'''statement : CONSOLE DOT LOG LEFTPAREN printList RIGHTPAREN SEMICOLON'''
 	for var in p[5]:
 		print "print, "+var['place']
  
-
-
 def p_printList(p):
 	'''printList : expression COMMA printList'''
 	var = newdict(['type',p[1]['type'],'place',p[1]['place']])
 	p[0] = [var] + p[2]
  
-
 def p_printList_base(p):
 	'''printList : expression'''
 	var = newdict(['type',p[1]['type'],'place',p[1]['place']])
 	p[0] = [var]
 
-
 #Declaration
-
-
 def p_declaration(p):
 	'''declaration : VAR declarationList'''
 	this = st['scopes'][len(st['scopes'])-1]
@@ -218,19 +212,15 @@ def p_declaration(p):
 		else:
 			raise SyntaxError
 
-
 def p_declarationList(p):
 	'''declarationList : ID COMMA declarationList'''
 	p[0] = [p[1]] + p[3]
-
 
 def p_declaration_base(p):
 	'''declarationList : ID'''
 	p[0] = [p[1]]
 	
 #Assignment
-
-
 def p_assignment(p):
 	'''assignment : VAR assignlist'''
 	this = st['scopes'][len(st['scopes'])-1]
@@ -244,7 +234,6 @@ def p_assignment(p):
 				print "=, "+new+", "+var['place']
 			else:
 				new = createtemp(var['name'],this,var['type'],var['data'])
-
 
 def p_assignlist(p):
 	'''assignlist : ID EQ expression COMMA assignlist'''
@@ -262,7 +251,6 @@ def p_assignlist_base(p):
 	id['place'] = p[3]['place']
 	p[0] = [id]
 
-
 def p_assignlist_array(p):
 	'''assignlist : ID EQ array'''
 	id = {}
@@ -275,7 +263,7 @@ def p_assignlist_array(p):
 	shape = []
 	arr= []
 	arr = getshape(p[3],shape)
-	iden['data']['shape']=arr
+	id['data']['shape']=arr
 	size = 4
 
 	for el in arr:
@@ -285,11 +273,7 @@ def p_assignlist_array(p):
 	loop_and_print(p[3], p[1])
 	p[0] = [id]
 
-
 #Reassignment
-
-
-
 def p_assignment_arith(p):
 	'''reassignment : ID EQ expression
 				| ID PLUSEQ expression
@@ -303,11 +287,11 @@ def p_assignment_arith(p):
 		dst = st['scopes'][scope][p[1]]
 		src = p[3]
 		if p[2]!= "=":
-			if dst['type']!=src['type'] or dst['type']=="STRING":
+			if dst['t']!=src['type'] or dst['t']=="STRING":
 				print "Reassignment types not matching"
 				raise SyntaxError
 
-		dst = dst['place']
+		dst = dst['p']
 		src = src['place']
 
 		if p[2]=="=":
@@ -325,13 +309,12 @@ def p_assignment_arith(p):
 
 		if scope != len(st['scopes'])-1:
 			this['vars'].append(p[1])
-			this[p[1]]=newvarforscope(p[3]['type'],len(st['scopes'])-1,dst,NULL)
+			this[p[1]]=newvarforscope(p[3]['type'],len(st['scopes'])-1,dst,data={})
 
 
 	else:
 		print p[1] + "identifier not defined"
 		raise SyntaxError
-
 
 def p_reassignment_incr(p):
 	'''reassignment : ID INCR
@@ -345,15 +328,12 @@ def p_reassignment_incr(p):
 		print "B=, "+temp+", 1"
 
 		if p[2]=="++":
-			print "+, "+dest['place']+", "+temp
+			print "+, "+dst['p']+", "+temp
 		elif p[2]=='--':
-			print "-, "+dest['place']+", "+temp	
+			print "-, "+dst['p']+", "+temp	
 		if scope != len(st['scopes'])-1:
 			this['vars'].append(p[1])
-			this[p[1]] = newvarforscope(dst['type'],len(st['scopes'])-1,dst['place'],NULL)
-
-
-
+			this[p[1]] = newvarforscope(dst['t'],len(st['scopes'])-1,dst['p'],data={})
 
 def p_reassignment_shift(p):
 	'''reassignment	: ID LSHIFTEQ expression
@@ -364,14 +344,6 @@ def p_reassignment_shift(p):
 					| ID XOREQ expression
 					| ID MODEQ expression
 					| LEFTPAREN reassignment RIGHTPAREN'''
-
-def p_casemarker(p):
-	'''casemarker : '''
-	addscope()
-
-def p_endcasemarker(p):
-	'''endcasemarker : '''
-	removescope()
 
 def p_array(p):
 	'''array : LEFTBRACKET arrayList RIGHTBRACKET'''
@@ -385,7 +357,6 @@ def p_arrayList_array(p):
 	temp['array'] = p[1]['array']
 
 	p[0] = newdict(['elements',1+ p[3]['elements'],'array',[temp] + p[3]['array']])
-
 
 def p_arrayList_base_array(p):
 	'''arrayList : array'''
@@ -423,9 +394,7 @@ def p_arrayList_base_exp(p):
 		p[0]['array'] = [temp]
 		p[0]['elements'] = 1
 
-
 #precedence
-
 precedence = (
 		('left', 'OR'),
 		('left', 'AND'),
@@ -454,7 +423,6 @@ def p_expression_op(p):
 		p[0]=newdict(['type',p[1]['type'],'place',new])
 		print "=, "+p[0]['place']+", "+p[1]['place']
 		print p[2]+", "+p[0]['place']+", "+p[3]['place']		
-
 
 #Group
 def p_groupExp(p):
@@ -508,14 +476,14 @@ def p_expression_relop(p):
 	l1= createlabel()
 	l2= createlabel()
 	l3= createlabel()
-	print "ifgoto, "+op+", "+p[1]['place']+", "+p[3]['place']+", "+label1
-	print "goto, "+label2
-	print "label, "+label1
+	print "ifgoto, "+op+", "+p[1]['place']+", "+p[3]['place']+", "+l1
+	print "goto, "+l2
+	print "label, "+l1
 	print "B=, "+p[0]['place']+", 1"
-	print "goto, "+label3
-	print "label, "+label2
+	print "goto, "+l3
+	print "label, "+l2
 	print "B=, "+p[0]['place']+", 0"
-	print "label, "+label3
+	print "label, "+l3
 
 def p_expression_strop(p):
 	'''expression : expression STREQUAL expression
@@ -523,29 +491,29 @@ def p_expression_strop(p):
 
 #ANDOR
 #EVAL
-def p_expression_eval_undefined(p):
-	'''expression : EVAL LEFTPAREN evalmarker statements evalendmarker RIGHTPAREN
-				  | EVAL LEFTPAREN block RIGHTPAREN'''
-	new =newtemp()
-	p[0]=newdict(['type','EVAL_UNDEFINED','place',new,'value',0])
+# def p_expression_eval_undefined(p):
+# 	'''expression : EVAL LEFTPAREN evalmarker statements evalendmarker RIGHTPAREN
+# 				  | EVAL LEFTPAREN block RIGHTPAREN'''
+# 	new =newtemp()
+# 	p[0]=newdict(['type','EVAL_UNDEFINED','place',new,'value',0])
 
 
-def p_expression_eval_expression(p):
-	'''expression : EVAL LEFTPAREN expression RIGHTPAREN'''
-	new =newtemp()
-	p[0]=newdict(['type',p[3]['type'],'place',new])
-	if p[0]['type'] in ['BOOLEAN', 'NUMBER', 'UNDEFINED']:
-		print "=, "+p[0]['place']+', '+p[3]['place']
-	else:
-		print "check expression eval expression"
+# def p_expression_eval_expression(p):
+# 	'''expression : EVAL LEFTPAREN expression RIGHTPAREN'''
+# 	new =newtemp()
+# 	p[0]=newdict(['type',p[3]['type'],'place',new])
+# 	if p[0]['type'] in ['BOOLEAN', 'NUMBER', 'UNDEFINED']:
+# 		print "=, "+p[0]['place']+', '+p[3]['place']
+# 	else:
+# 		print "check expression eval expression"
 
-def p_evalmarker(p):
-	'''evalmarker : '''
-	addScope()
+# def p_evalmarker(p):
+# 	'''evalmarker : '''
+# 	addScope()
 
-def p_evalendmarker(p):
-	'''evalendmarker : '''
-	removeScope()
+# def p_evalendmarker(p):
+# 	'''evalendmarker : '''
+# 	removeScope()
 
 
 #ExpressionBasics
@@ -564,7 +532,7 @@ def p_expression_id(p):
 	flag,scope  = id_present(p[1],'variable')
 	if flag:
 		src = st['scopes'][scope][p[1]]
-		p[0]=newdict(['type',src['type'],'place',src['place']])
+		p[0]=newdict(['type',src['t'],'place',src['p']])
 		if p[0]['type'] in ['BOOLEAN', 'NUMBER', 'UNDEFINED']:
 			t=1
 		else:
@@ -610,9 +578,10 @@ def p_expression_functioncall_varid(p):
 	variable=p[2]
 	if variable not in this['vars']:
 		createtemp(variable,this,"UNDEFINED",data={})
+		print p[4]
 		scope = p[4]['level']
 		place=p[4]['place']
-		print "call, "+st['scopes'][scope][place]['place']+", "+this[variable]['place']
+		print "call, "+st['scopes'][scope][place]['p']+", "+this[variable]['p']
 	else:
 		raise SyntaxError
 	new=newtemp()
@@ -642,7 +611,7 @@ def p_arrayCall(p):
 
 	else:
 		array_ptr = st['scopes'][scope][p[1]]
-		shape = array_ptr['data']['shape']
+		shape = array_ptr['d']['shape']
 		if len(p[2])!=len(shape)-1:
 			print "shape of the array and your referencing doesnot match"
 			raise SyntaxError
@@ -683,11 +652,10 @@ def p_reference_base(p):
 		temp=newdict(['type',p[2]['type'],'place',p[2]['place']])
 		p[0]=[temp]
 
-
 #BASICTYPES
 def p_basicTypes_number(p):
 	'''basicTypes : NUMBER'''
-	p[0]=newdict(['type','NUMBER','value',int(p[1])])
+	p[0]=newdict(['type','NUMBER','value',p[1]])
 
 def p_basicTypes_boolean(p):
 	'''basicTypes : BOOLEAN'''
@@ -715,7 +683,7 @@ def p_functioncall(p):
 	flag,scope = id_present(p[1],'funtion')
 	if flag:
 		for par in reversed(p[3]):
-			print "param, "+param
+			print "param, "+par
 		p[0]=newdict(['level',scope,'place',p[1]])
 	else:
 		print "No function named ",p[1]," Already defined"
@@ -754,9 +722,9 @@ def p_ifelseblock_marker(p):
 	t=newtemp()
 
 	print "B=, "+t+", 1"
-	print "ifgoto, je, "+p[-1]['place']+", "+t+", "+label1
-	print "goto, "+label2
-	print "label, "+label1
+	print "ifgoto, je, "+p[-1]['place']+", "+t+", "+l1
+	print "goto, "+l2
+	print "label, "+l1
 
 def p_elseblock_marker(p):
 	'''elseblock : empty'''
@@ -794,7 +762,7 @@ def p_forloop(p):
 
 def p_scope_marker(p):
 	'''scope_marker : '''
-	addScope()
+	addscope()
 
 def p_forexpr_marker(p):
 	'''forexpr_marker : '''
@@ -802,8 +770,8 @@ def p_forexpr_marker(p):
 	l2=createlabel()
 	l3=createlabel()
 	l4=createlabel()
-	p[0] = [label1, label2, label3, label4]
-	print "label, "+p[-2][3]
+	p[0] = [l1, l2, l3, l4]
+	print "label, "+l1
 
 def p_forcheck_marker(p):
 	'''forcheck_marker : '''
@@ -821,7 +789,7 @@ def p_endblock_marker(p):
 	'''endblock_marker : '''
 	print "goto, "+p[-8][3]
 	print "label, "+p[-8][2]
-	removeScope()
+	removescope()
 
 def p_forblock(p):
 	'''forblock : LEFTBRACE statements RIGHTBRACE'''
@@ -850,7 +818,7 @@ def p_funcarghead(p):
 	for var in p[1]:
 		if var not in this['vars']:
 			new = createtemp(var,this,"UNDEFINED",data={})
-			print "args, "+new+", "+str(count)
+			print "args, "+new+", "+str(counter)
 			counter = counter +1
 		else:
 			raise SyntaxError
@@ -944,7 +912,7 @@ def read_data(file):
 		filename = dir+'/'+file
 		fd = open(filename,'r')
 		data=fd.read()
-		lex_fun(data,toks)
+		lexFunc(data,toks)
 		input = ""
 		for tok in toks:
 			if tok.type == "LCOMMENT" or tok.type == "BCOMMENT":
@@ -953,10 +921,6 @@ def read_data(file):
 		return input
 
 if __name__ == '__main__':
-	a=1
-	b=["vkjkt",'b','cswdw',"cfdjvbd"]
-	c=newdict(b)
-	print(c)
 	filename = sys.argv[1]
 	data = read_data(filename)
-	result = parser.parse(data, lexer=lexer_global)
+	result = parser.parse(data, lexer)
